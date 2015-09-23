@@ -2,14 +2,14 @@
 
 This package is built up based on python2.7 (2.7.10)
 
-* Required packages:
+* Required packages
 
-   numpy: related to manipulation of training and testing samples
+   numpy: related to preparation of training and testing samples.
    
-   astropy: related to read out data catalog formatted in fits
+   astropy: related to read out data catalog formatted in fits.
    
-   scikit-learn: related to training and evaluation of given samples
+   scikit-learn: related to training and evaluation of given samples. Also, this package is required for the performance test.
 
-* Required file(s):
+* Required file(s)
 
-   feature.txt: including names of features to be used
+   feature.txt: including names of features to be used.
