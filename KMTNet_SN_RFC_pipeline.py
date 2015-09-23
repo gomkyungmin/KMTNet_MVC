@@ -50,9 +50,9 @@ def parse_command_line():
     return args
     
 
-def load_data():
+def load_data(data_file,feature_file,class_cut):
     
-    samples = ld.load_data(args.data_file,args.feature_file,args.class_cut)
+    samples = ld.load_data(data_file,feature_file,class_cut)
     features = samples.features
 
     return samples, features
@@ -93,7 +93,11 @@ if __name__=='__main__':
     val_min_samples_leaf = args.min_samples_leaf
     val_n_jobs = args.n_jobs
 
-    samples, features = load_data()
+    data_file = args.data_file
+    feature_file = args.feature_file
+    class_cut = args.class_cut
+    
+    samples, features = load_data(data_file,feature_file,class_cut)
     X_train,y_train,X_test,y_test=data_generation(samples)
 
     pklfiledir = 'trained_forest'
