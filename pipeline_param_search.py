@@ -29,8 +29,6 @@ def parse_command_line():
     
     #----- Parameter Space Search for RF -----#
     group_rf = subparsers.add_parser("rf")
-    # group_rf.add_argument("--param-search",default=False,action="store_true",\
-    #                     help="switch for searching optimal training parameters")
     group_rf.add_argument("--param-search-file",action="store",type=str)
     #----- Training Parameters -----#
     group_rf.add_argument("--max-leaf-nodes",default=None,\
@@ -46,6 +44,20 @@ def parse_command_line():
     #----- Parameter Space Search for SVM -----#
     group_svm = subparsers.add_parser("svm")
     group_svm.add_argument("--param-search-file",aciton="store",default=None,type=str)
+    group_svm.add_argument("--kernel",action="store",default="rbf",type=str,\
+                           help="Options: linear, poly, rbf, sigmoid, precomputed")
+    group_svm.add_argument("--degree",action="store",default=3,type=int,\
+                           help="Degree of the polynomial kernel function. Ignored by all other kernels.")
+    group_svm.add_argument("--gamma",action="store",default=0.,type=float,\
+                           help="Kernel coefficient for rbf, poly and sigmoid. If gamma is 0. then 1/n_features will b\
+e used instead.")
+    group_svm.add_argument("--coef0",action="store",default=0.,type=float,\
+                           help="Independent term in kernel function. It is only significant in poly and sigmoid.")
+    group_svm.add_argument("--probability",action="store_true",default=True)
+    group_svm.add_argument("--tol",action="store",default=1e-3,type=float)
+    group_svm.add_argument("--max-iter",action="store",default=10000,type=int,\
+                           help="Hard limit on iterations within solver, or -1 for no limit.")
+    group_svm.add_argument("--random-state",action="store",default=None)    
     
     args = vars(parser.parse_args())
 
@@ -60,91 +72,15 @@ def load_data(data_file,feature_file,class_cut):
     return samples, features
 
 
-def data_generation(samples,training_part,training_size):
-
-    X = samples.data
-    y = samples.target
-
-    train_samples = len(samples.data)*training_size
-
-    if training_part == 'first':
-        X_train = X[:train_samples]
-        X_test = X[train_samples:]
-        y_train = y[:train_samples]
-        y_test = y[train_samples:]
-    elif training_part == 'second':
-        X_train = X[train_samples:]
-        X_test = X[:train_samples]
-        y_train = y[train_samples:]
-        y_test = y[:train_samples]
-
-    return X_train,y_train,X_test,y_test
-
-
-if __name__=='__main__':
+def main()
 
     args = parse_command_line()
 
-    data_file = args['data_file']
-    feature_file = args['feature_file']
-    class_cut = args['class_cut']
-    training_size = args['training_size']
-    training_part = args['training_part']
-
-    mla_args = args.copy()
-    del mla_args['data_file'], mla_args['feature_file'],\
-        mla_args['class_cut'], mla_args['training_size'],\
-        mla_args['training_part']
-    
-    samples, features = load_data(data_file,feature_file,class_cut)
-    X_train, y_train, X_test, y_test = data_generation(samples,training_part,training_size)
-
+    samples, features = load_data(args['data_file'],args['feature_file'],args['class_cut'])
     params = ps.read_param(args['param_search_file'])
+    ps.find_optimal(params,samples,**args)
+    
+    
+if __name__=='__main__':
 
-    if mla_args['mla_selection'] == 'rf':
-        best_combination = ps.find_optimal(params,X_train,y_train,X_test,y_test)
-
-        mla_args['n_estimators'] = best_combination[0]
-        mla_args['criterion'] = best_combination[1]
-        mla_args['max_features'] = best_combination[2]
-        mla_args['min_samples_split'] = best_combination[3]
-        mla_args['max_depth'] = best_combination[4]
-
-        tag = '_'+str(mla)\
-              +'_C'+str(mla_args['C'])\
-              +'_k'+str(mla_args['kernel'])\
-              +'_d'+str(mla_args['degree'])\
-              +'_g'+str(mla_args['gamma'])\
-              +'_c'+str(mla_args['coef0'])\
-              +'_t'+str(mla_args['tol'])\
-              +'_Mi'+str(mla_args['max_iter'])\
-              +'_r'+str(mla_args['random_state'])\
-              +'_'+str(training_part)+str(training_size)
-
-        ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
-        clf = ml.train()
-        
-    if mla_args['mla_selection'] == 'svm':
-        best_combination = ps.find_optimal(params,X_train,y_train,X_test,y_test)
-
-        # mla_args['...'] = best_combination[0]
-        # mla_args['...'] = best_combination[1]
-        # mla_args['...'] = best_combination[2]
-        # mla_args['...'] = best_combination[3]
-        # mla_args['...'] = best_combination[4]
-
-        tag = '_'+str(mla)\
-              +'_C'+str(mla_args['C'])\
-              +'_k'+str(mla_args['kernel'])\
-              +'_d'+str(mla_args['degree'])\
-              +'_g'+str(mla_args['gamma'])\
-              +'_c'+str(mla_args['coef0'])\
-              +'_t'+str(mla_args['tol'])\
-              +'_Mi'+str(mla_args['max_iter'])\
-              +'_r'+str(mla_args['random_state'])\
-              +'_'+str(training_part)+str(training_size)
-
-        ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
-        clf = ml.train()
-        
-    pipeline.performance_test(ml,clf,features,**mla_args)
+    main()
