@@ -44,8 +44,8 @@ def test_rf(clf,X_test):
           (len(X_test),utils.Timer(EvaluationEndTime-EvaluationStartTime)))
 
     return result
-    
-    
+
+
 def classification_summary(clf,result,X_test,y_test):
 
     tp = 0.
@@ -86,8 +86,8 @@ def diagnosing_trained_forest(clf,features,**mla_args):
         print("\nFeature Ranking:")
         for f in range(len(features)):
             print("%d. %s (%f)" % (f+1, features[indices[f]], importances[indices[f]]))
-            
-            
+
+
 def train_svm(tag,X_train,y_train,**mla_args):
 
     #Create SupportVectorMachines classifier

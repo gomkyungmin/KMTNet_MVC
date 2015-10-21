@@ -6,6 +6,7 @@ import argparse
 
 import numpy as np
 from sklearn.externals import joblib
+from sklearn import preprocessing
 
 import LoadData as ld
 import Classifier as CLF
@@ -27,7 +28,8 @@ def parse_command_line():
     parser.add_argument("--class-cut",action="store",type=float)
     parser.add_argument("--training-part",action="store",type=str,default="first")
     parser.add_argument("--training-size",action="store",type=float,default=0.5)
-
+    parser.add_argument("--scaler",action="store",type=str,default="Standard")
+    
     subparsers = parser.add_subparsers(dest='mla_selection')
     
     #----- Training Parameters for RF -----#
@@ -82,7 +84,7 @@ def load_data(data_file,feature_file,class_cut):
     return samples, features
 
     
-def data_generation(samples,training_part,training_size):
+def data_generation(samples,training_part,training_size,scaler):
 
     X = samples.data
     y = samples.target
@@ -99,21 +101,28 @@ def data_generation(samples,training_part,training_size):
         X_test = X[:train_samples]
         y_train = y[train_samples:]
         y_test = y[:train_samples]
-    
+
+    # Preprocessing (Scaling) for X_train and X_test
+    if scaler == 'Standard':
+        scaler = preprocessing.StandardScaler()
+    elif scaler == 'MinMax':
+        scaler = preprocessing.MinMaxScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+        
     return X_train,y_train,X_test,y_test
 
 
-def performance_test(ml,clf,features,**mla_args):
+def evaluation(clf):
 
     classified_result_proba = ml.test(clf)
     
-    figdir = 'figure'
-    if not os.path.isdir(figdir):
-        os.mkdir(figdir)
-    else:
-        pass
+    return classified_result_proba
 
-    plt.draw_roc(ml.y_test,classified_result_proba,figdir,ml.tag)
+
+def performance_test(ml,result,features,**mla_args):
+
+    plt.draw_roc(ml.y_test,result,ml.tag)
 
     if mla_args['mla_selection'] == 'rf' and\
        (mla_args['estimators'] is True or\
@@ -134,15 +143,16 @@ def main():
     class_cut =args['class_cut']
     training_size = args['training_size']
     training_part = args['training_part']
-
+    scaler = args['scaler']
+    
     mla_args = args.copy()
     del mla_args['data_file'], mla_args['feature_file'],\
         mla_args['class_cut'], mla_args['training_size'],\
-        mla_args['training_part']
+        mla_args['training_part'], mla_args['scaler']
     
     samples, features = load_data(data_file,feature_file,class_cut)
     X_train, y_train, X_test, y_test\
-        = data_generation(samples,training_part,training_size)
+        = data_generation(samples,training_part,training_size,scaler)
 
     pklfiledir = 'trained_pickle'
     if not os.path.isdir(pklfiledir):
@@ -151,7 +161,7 @@ def main():
         pass
     
     if args['pkl_file'] is not None:
-        tag = args['pkl_file'].replace('trained_pickle/trained_%s' % mla,'')
+        tag = args['pkl_file'].replace('trained_pickle/trained','')
         tag = tag.replace('.pkl','')
         ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
 
@@ -168,7 +178,8 @@ def main():
               +'_mss'+str(mla_args['min_samples_split'])\
               +'_msl'+str(mla_args['min_samples_leaf'])\
               +'_'+str(mla_args['criterion'])\
-              +'_'+str(training_part)+str(training_size)
+              +'_'+str(training_part)+str(training_size)\
+              +'_scaler'+str(scaler)
     
         pklfilename = 'trained'+tag+'.pkl'
         pklfile = join(pklfiledir,pklfilename)
@@ -180,8 +191,7 @@ def main():
             print("Trained forest is loaded from %s" % (pklfile))
             print clf
 
-            tag = pklfile.replace('trained_pickle/trained_%s' %\
-                                  mla_args['mla_selection'],'')
+            tag = pklfile.replace('trained_pickle/trained','')
             tag = tag.replace('.pkl','')
             ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
 
@@ -199,8 +209,9 @@ def main():
               +'_t'+str(mla_args['tol'])\
               +'_Mi'+str(mla_args['max_iter'])\
               +'_r'+str(mla_args['random_state'])\
-              +'_'+str(training_part)+str(training_size)
-    
+              +'_'+str(training_part)+str(training_size)\
+              +'_scaler'+str(scaler)
+              
         pklfilename = 'trained'+tag+'.pkl'
         pklfile = join(pklfiledir,pklfilename)
 
@@ -211,8 +222,7 @@ def main():
             print("Trained support vector machine is loaded from %s" % (pklfile))
             print clf
 
-            tag = pklfile.replace('trained_pickle/trained_%s' %\
-                                  mla_args['mla_selection'],'')
+            tag = pklfile.replace('trained_pickle/trained','')
             tag = tag.replace('.pkl','')
             ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
 
@@ -220,7 +230,8 @@ def main():
             ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
             clf = ml.train()
 
-    performance_test(ml,clf,features,**mla_args)
+    result = evaluation(clf)
+    performance_test(ml,result,features,**mla_args)
 
 
 if __name__=='__main__':

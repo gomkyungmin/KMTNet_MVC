@@ -42,3 +42,4 @@ def load_data(datafile,features,cls_cut):
     return Bunch(features=features,\
                  data=flat_data,\
                  target=target)
+    
