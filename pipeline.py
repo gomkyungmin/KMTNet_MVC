@@ -125,8 +125,7 @@ def performance_test(ml,clf,features,**mla_args):
         pass
 
 
-
-if __name__=='__main__':
+def main():
 
     args = parse_command_line()
 
@@ -222,3 +221,8 @@ if __name__=='__main__':
             clf = ml.train()
 
     performance_test(ml,clf,features,**mla_args)
+
+
+if __name__=='__main__':
+
+    main()
