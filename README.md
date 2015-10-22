@@ -19,6 +19,7 @@ This package is built up based on python2.7 (2.7.10)
 * Required file(s)
 
    feature.txt: including names of features to be used.
+   
    param_space_xx.txt: including parameters of features to be tested for the best combination (only for pipeline_param_search.py)
 
 
