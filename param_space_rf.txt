@@ -1,0 +1,6 @@
+scaler None,Standard,MinMax
+n_estimators 50,100
+criterion gini,entropy
+max_features 5,6
+min_samples_split 2,3
+max_depth None,10

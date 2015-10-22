@@ -1,0 +1,2 @@
+scaler Standard,MinMax
+C 1.0,10.0,100.0
