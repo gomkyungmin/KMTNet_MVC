@@ -12,6 +12,7 @@ import LoadData as ld
 import Classifier as CLF
 import Plot as plt
 import MLA
+import Utils as utils
 
 
 def parse_command_line():
@@ -28,7 +29,7 @@ def parse_command_line():
     parser.add_argument("--class-cut",action="store",type=float)
     parser.add_argument("--training-part",action="store",type=str,default="first")
     parser.add_argument("--training-size",action="store",type=float,default=0.5)
-    parser.add_argument("--scaler",action="store",type=str,default="Standard")
+    parser.add_argument("--scaler",action="store",type=str,default=None)
     
     subparsers = parser.add_subparsers(dest='mla_selection')
     
@@ -76,84 +77,81 @@ def parse_command_line():
     return args
 
 
-def load_data(data_file,feature_file,class_cut):
-    
-    samples = ld.load_data(data_file,feature_file,class_cut)
-    features = samples.features
+def training_go_or_stop(dataset,pklfiledir,**args):
 
-    return samples, features
+    tag = utils.Tag(**args)
+    pklfilename = 'trained'+tag+'.pkl'
+    pklfile = join(pklfiledir,pklfilename)
 
-    
-def data_generation(samples,training_part,training_size,scaler):
-
-    X = samples.data
-    y = samples.target
-
-    train_samples = len(samples.data)*training_size
-
-    if training_part == 'first':
-        X_train = X[:train_samples]
-        X_test = X[train_samples:]
-        y_train = y[:train_samples]
-        y_test = y[train_samples:]
-    elif training_part == 'second':
-        X_train = X[train_samples:]
-        X_test = X[:train_samples]
-        y_train = y[train_samples:]
-        y_test = y[:train_samples]
-
-    # Preprocessing (Scaling) for X_train and X_test
-    if scaler == 'Standard':
-        scaler = preprocessing.StandardScaler()
-    elif scaler == 'MinMax':
-        scaler = preprocessing.MinMaxScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
+    if args['mla_selection'] == 'rf':
+        mla_name = 'RF'
+    elif args['mla_selection'] == 'svm':
+        mla_name = 'SVM'
         
-    return X_train,y_train,X_test,y_test
+    if os.path.exists(pklfile):
+        print "\nYou already have a trained result which is trained with the same parameters!"
+        answer = utils.QueryYesNo("Do you want to train %s again?" % mla_name)
+        if answer == True:
+            ml = MLA.MLA(tag, dataset, **args)
+            clf = ml.train()
+        elif answer == False:
+            ml = MLA.MLA(tag, dataset, **args)
+            clf = joblib.load(pklfile)
+            print "Trained result is loaded from %s" % (pklfile)
+            print clf
+    else:
+        ml = MLA.MLA(tag, dataset, **args)
+        clf = ml.train()
+
+    return ml,clf
 
 
-def evaluation(clf):
+def evaluation(ml,clf):
 
     classified_result_proba = ml.test(clf)
     
     return classified_result_proba
 
 
-def performance_test(ml,result,features,**mla_args):
+def performance_test(ml,clf,result,features,**args):
 
     plt.draw_roc(ml.y_test,result,ml.tag)
 
-    if mla_args['mla_selection'] == 'rf' and\
-       (mla_args['estimators'] is True or\
-       mla_args['classes'] is True or\
-       mla_args['feature_importance'] is True):
+    if args['mla_selection'] == 'rf' and\
+       (args['estimators'] is True or\
+       args['classes'] is True or\
+       args['feature_importance'] is True):
         print("\n=== Diagnostic(s) of Trained RandomForest ===")
-        CLF.diagnosing_trained_forest(clf,features,**mla_args)
+        MLA.DiagnosingTrainedForest(clf,features,**args)
     else:
         pass
 
+    
+def evaluation_go_or_stop(ml,clf,samples,**args):
 
+    figfile = 'figure/plot_roc_lin'+ml.tag+'.png'
+    
+    if os.path.exists(figfile):
+        print "\nYou already have results of the performance test. "
+        answer = utils.QueryYesNo("Do you want to update previous results?")
+        if answer == True:
+            result = evaluation(ml,clf)
+            performance_test(ml, clf, result, samples.features, **args)
+        elif answer == False:
+            pass
+    else:
+        result = evaluation(ml,clf)
+        performance_test(ml, clf, result, samples.features, **args)
+
+        
 def main():
 
     args = parse_command_line()
-
-    data_file = args['data_file']
-    feature_file = args['feature_file']
-    class_cut =args['class_cut']
-    training_size = args['training_size']
-    training_part = args['training_part']
-    scaler = args['scaler']
     
-    mla_args = args.copy()
-    del mla_args['data_file'], mla_args['feature_file'],\
-        mla_args['class_cut'], mla_args['training_size'],\
-        mla_args['training_part'], mla_args['scaler']
-    
-    samples, features = load_data(data_file,feature_file,class_cut)
-    X_train, y_train, X_test, y_test\
-        = data_generation(samples,training_part,training_size,scaler)
+    samples = ld.LoadData(**args)
+    dataset = ld.DataGeneration(samples,**args)    
 
+    # Creation of a directory for trained pickle file
     pklfiledir = 'trained_pickle'
     if not os.path.isdir(pklfiledir):
         os.mkdir(pklfiledir)
@@ -161,77 +159,15 @@ def main():
         pass
     
     if args['pkl_file'] is not None:
-        tag = args['pkl_file'].replace('trained_pickle/trained','')
-        tag = tag.replace('.pkl','')
-        ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
-
+        tag = args['pkl_file'].replace('%s/trained' % pklfiledir,'').replace('.pkl','')
+        ml = MLA.MLA(tag, dataset, **args)
         clf = joblib.load(args['pkl_file'])
-        print("\nTrained forest is loaded from %s" % (args['pkl_file']))
-        print clf
-        
-    elif mla_args['mla_selection'] == 'rf':
-        tag = '_'+str(mla_args['mla_selection'])\
-              +'_trees'+str(mla_args['n_estimators'])\
-              +'_Mf'+str(mla_args['max_features'])\
-              +'_Md'+str(mla_args['max_depth'])\
-              +'_Mln'+str(mla_args['max_leaf_nodes'])\
-              +'_mss'+str(mla_args['min_samples_split'])\
-              +'_msl'+str(mla_args['min_samples_leaf'])\
-              +'_'+str(mla_args['criterion'])\
-              +'_'+str(training_part)+str(training_size)\
-              +'_scaler'+str(scaler)
-    
-        pklfilename = 'trained'+tag+'.pkl'
-        pklfile = join(pklfiledir,pklfilename)
+        print "\nTrained forest is loaded from %s" % (args['pkl_file'])
+        print clf        
+    else:
+        ml,clf = training_go_or_stop(dataset,pklfiledir,**args)
 
-        if os.path.exists(pklfile):
-            print("\nYou have a support vector machine trained w/ the same parameters!")
-
-            clf = joblib.load(pklfile)
-            print("Trained forest is loaded from %s" % (pklfile))
-            print clf
-
-            tag = pklfile.replace('trained_pickle/trained','')
-            tag = tag.replace('.pkl','')
-            ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
-
-        else:
-            ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
-            clf = ml.train()
-
-    elif mla_args['mla_selection'] == 'svm':
-        tag = '_'+str(mla_args['mla_selection'])\
-              +'_C'+str(mla_args['C'])\
-              +'_k'+str(mla_args['kernel'])\
-              +'_d'+str(mla_args['degree'])\
-              +'_g'+str(mla_args['gamma'])\
-              +'_c'+str(mla_args['coef0'])\
-              +'_t'+str(mla_args['tol'])\
-              +'_Mi'+str(mla_args['max_iter'])\
-              +'_r'+str(mla_args['random_state'])\
-              +'_'+str(training_part)+str(training_size)\
-              +'_scaler'+str(scaler)
-              
-        pklfilename = 'trained'+tag+'.pkl'
-        pklfile = join(pklfiledir,pklfilename)
-
-        if os.path.exists(pklfile):
-            print("\nYou have a support vector machine trained w/ the same parameters!")
-
-            clf = joblib.load(pklfile)
-            print("Trained support vector machine is loaded from %s" % (pklfile))
-            print clf
-
-            tag = pklfile.replace('trained_pickle/trained','')
-            tag = tag.replace('.pkl','')
-            ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
-
-        else:
-            ml = MLA.MLA(tag,X_train,y_train,X_test,y_test,**mla_args)
-            clf = ml.train()
-
-    result = evaluation(clf)
-    performance_test(ml,result,features,**mla_args)
+    evaluation_go_or_stop(ml,clf,samples,**args)
 
 
 if __name__=='__main__':

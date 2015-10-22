@@ -1,13 +1,11 @@
 #!/usr/bin/python
 
+import os
+from os.path import exists
 import argparse
-
-import numpy as np
 
 import LoadData as ld
 import ParamSearch as ps
-import MLA
-import pipeline
 import Utils as utils
 
 
@@ -25,16 +23,13 @@ def parse_command_line():
     parser.add_argument("--class-cut",action="store",type=float)
     parser.add_argument("--training-part",action="store",type=str,default="first")
     parser.add_argument("--training-size",action="store",type=float,default=0.5)
-    #parser.add_argument("--scaler",action="store",type=str,default="Standard")
 
     subparsers = parser.add_subparsers(dest='mla_selection')
     
     #----- Parameter Space Search for RF -----#
     group_rf = subparsers.add_parser("rf")
-    # group_rf.add_argument("--param-search",default=False,action="store_true",\
-    #                     help="switch for searching optimal training parameters")
     group_rf.add_argument("--param-search-file",action="store",type=str)
-    #----- Training Parameters -----#
+    #----- Training Parameters for RF -----#
     group_rf.add_argument("--max-leaf-nodes",default=None,\
                         help="default=None, available values: integer or None")
     group_rf.add_argument("--min-samples-leaf",default=1,type=int)
@@ -48,6 +43,7 @@ def parse_command_line():
     #----- Parameter Space Search for SVM -----#
     group_svm = subparsers.add_parser("svm")
     group_svm.add_argument("--param-search-file",action="store",default=None,type=str)
+    #----- Training Parameters for SVM -----#
     group_svm.add_argument("--kernel",action="store",default="rbf",type=str,\
                            help="Options: linear, poly, rbf, sigmoid, precomputed")
     group_svm.add_argument("--degree",action="store",default=3,type=int,\
@@ -58,7 +54,7 @@ def parse_command_line():
                            help="Independent term in kernel function. It is only significant in poly and sigmoid.")
     group_svm.add_argument("--probability",action="store_true",default=True)
     group_svm.add_argument("--tol",action="store",default=1e-3,type=float)
-    group_svm.add_argument("--max-iter",action="store",default=10000,type=int,\
+    group_svm.add_argument("--max-iter",action="store",default=-1,type=int,\
                            help="Hard limit on iterations within solver, or -1 for no limit.")
     group_svm.add_argument("--random-state",action="store",default=None)
     
@@ -67,26 +63,30 @@ def parse_command_line():
     return args
 
 
-def load_data(data_file,feature_file,class_cut):
+def param_search_go_or_stop(params,samples,**args):
 
-    samples = ld.load_data(data_file,feature_file,class_cut)
-    features = samples.features
+    rankfile = 'combination_ranking_%s.txt' % args['mla_selection']
 
-    return samples, features
-
+    if os.path.exists(rankfile):
+        print "\nYou already have a result of parameter search."
+        answer = utils.QueryYesNo("Do you want to search optimal parameters again?")
+        if answer == True:
+            ps.find_optimal(params,samples,**args)
+        elif answer == False:
+            pass
+    else:
+        ps.find_optimal(params,samples,**args)
+        
 
 def main():
 
     args = parse_command_line()
-    
-    samples, features = load_data(args['data_file'],args['feature_file'],args['class_cut'])
 
+    samples = ld.LoadData(**args)
     params = ps.read_param(args['param_search_file'])
+    param_search_go_or_stop(params,samples,**args)
 
-    ps.find_optimal(params,samples,**args)
-    
-
+        
 if __name__=='__main__':
 
     main()
-    

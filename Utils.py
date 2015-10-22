@@ -1,5 +1,7 @@
-import time
+import time, sys
+from os.path import exists
 from os.path import join
+
 from sklearn.externals import joblib
 
 
@@ -52,5 +54,59 @@ def PickleDump(tag, clf, mla):
     pklfile = join(pklfiledir,pklfilename)
 
     joblib.dump(clf, pklfile)
-    print("Trained %s is saved in %s" % (mla, pklfile))
+    print "Trained %s is saved in %s" % (mla, pklfile)
+    print clf
+
+
+def TrimArgs(**args):
+
+    mla_args = args.copy()
+
+    del mla_args['data_file'], mla_args['feature_file'],\
+        mla_args['class_cut'], mla_args['training_size'],\
+        mla_args['training_part'], mla_args['mla_selection'],\
+        mla_args['scaler'], mla_args['pkl_file']
+        
+    if args['mla_selection'] == 'rf':
+
+        del mla_args['feature_importance'], mla_args['classes'], mla_args['estimators'] 
+
+
+    return mla_args
+
+
+def TrimArgs_ps(**args):
+
+    mla_args = args.copy()
+
+    del mla_args['data_file'], mla_args['feature_file'],\
+        mla_args['class_cut'], mla_args['training_size'],\
+        mla_args['training_part'], mla_args['mla_selection'],\
+        mla_args['param_search_file']
+    
+    if args['mla_selection'] == 'rf':
+
+        del mla_args['feature_importance'], mla_args['classes'], mla_args['estimators'] 
+
+
+    return mla_args
+
+
+def QueryYesNo(question):
+
+    valid = {"yes": True, "y": True,\
+             "no": False, "n": False}
+    
+    prompt = " [y/n] "
+    
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if choice is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "\
+                             "(or 'y' or 'n').\n")
 

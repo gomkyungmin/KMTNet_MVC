@@ -22,7 +22,9 @@ def draw_roc(y_test, result_proba, tag):
 
     random_guess_x = np.linspace(x_min,1,num=len(y_test),endpoint=True)
     random_guess_y = random_guess_x
-    
+
+    print "\nPlotting figures..."
+
     plt.clf()
     plt.grid(True,which='both')
     plt.xlim([0,1])
@@ -34,6 +36,8 @@ def draw_roc(y_test, result_proba, tag):
     plt.text(0.45, 0.9, 'auc=%f' % roc_auc)
     plt.legend(loc='lower right')
     plt.savefig(figdir+'/plot_roc_lin'+tag+'.png', fmt='png')
+
+    print "%s is saved in %s." % ('plot_roc_lin'+tag+'.png',figdir)
     
     plt.clf()
     plt.grid(True,which='both')
@@ -46,3 +50,5 @@ def draw_roc(y_test, result_proba, tag):
     plt.text(6e-3, 0.4, 'auc=%f' % roc_auc)
     plt.legend(loc='upper left')
     plt.savefig(figdir+'/plot_roc_xlog'+tag+'.png', fmt='png')
+
+    print "%s is saved in %s." % ('plot_roc_xlog'+tag+'.png',figdir)
