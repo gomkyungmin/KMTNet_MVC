@@ -1,4 +1,5 @@
 import time, sys
+from time import strftime
 from os.path import exists
 from os.path import join
 
@@ -10,6 +11,13 @@ def Timer(duration):
     hrs, rem = divmod(duration, 3600)
     mins, sec = divmod(rem, 60)
     output = "{:0>2}:{:0>2}:{:05.2f}".format(int(hrs),int(mins),sec)
+
+    return output
+
+def WhatTimeIsItNow():
+
+    now = time.localtime()
+    output = strftime("%Y %b %d %H:%M:%S", now)
 
     return output
 
@@ -71,7 +79,6 @@ def TrimArgs(**args):
 
         del mla_args['feature_importance'], mla_args['classes'], mla_args['estimators'] 
 
-
     return mla_args
 
 
@@ -82,12 +89,11 @@ def TrimArgs_ps(**args):
     del mla_args['data_file'], mla_args['feature_file'],\
         mla_args['class_cut'], mla_args['training_size'],\
         mla_args['training_part'], mla_args['mla_selection'],\
-        mla_args['param_search_file']
+        mla_args['param_search_file'], mla_args['parallel']
     
     if args['mla_selection'] == 'rf':
 
         del mla_args['feature_importance'], mla_args['classes'], mla_args['estimators'] 
-
 
     return mla_args
 

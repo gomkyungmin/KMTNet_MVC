@@ -23,6 +23,7 @@ def parse_command_line():
     parser.add_argument("--class-cut",action="store",type=float)
     parser.add_argument("--training-part",action="store",type=str,default="first")
     parser.add_argument("--training-size",action="store",type=float,default=0.5)
+    parser.add_argument("--parallel",action="store_true",default=False)
 
     subparsers = parser.add_subparsers(dest='mla_selection')
     
@@ -63,7 +64,7 @@ def parse_command_line():
     return args
 
 
-def param_search_go_or_stop(params,samples,**args):
+def param_search_go_or_stop(**args):
 
     rankfile = 'combination_ranking_%s.txt' % args['mla_selection']
 
@@ -71,20 +72,18 @@ def param_search_go_or_stop(params,samples,**args):
         print "\nYou already have a result of parameter search."
         answer = utils.QueryYesNo("Do you want to search optimal parameters again?")
         if answer == True:
-            ps.find_optimal(params,samples,**args)
+            ps.ParamSearch(**args)
         elif answer == False:
             pass
     else:
-        ps.find_optimal(params,samples,**args)
+        ps.ParamSearch(**args)
         
 
 def main():
 
     args = parse_command_line()
 
-    samples = ld.LoadData(**args)
-    params = ps.read_param(args['param_search_file'])
-    param_search_go_or_stop(params,samples,**args)
+    param_search_go_or_stop(**args)
 
         
 if __name__=='__main__':
